@@ -12,6 +12,7 @@ namespace mymuduo
     {
     private:
         friend class MutexLockGuard;
+        friend class Condition;
 
         pthread_mutex_t mutex;
         pid_t holder;
@@ -26,6 +27,11 @@ namespace mymuduo
         {
             holder = 0;
             pthread_mutex_unlock(&mutex);
+        }
+
+        pthread_mutex_t *getPthreadMutex()
+        {
+            return &mutex;
         }
 
     public:
@@ -48,7 +54,7 @@ namespace mymuduo
         }
     };
 
-    class MutexLockGuard
+    class MutexLockGuard : noncopyable
     {
     private:
         MutexLock &mutex;
@@ -66,11 +72,42 @@ namespace mymuduo
         }
     };
 
+    class Condition : noncopyable
+    {
+    private:
+        MutexLock &mutex;
+        pthread_cond_t pcond;
+
+    public:
+        explicit Condition(MutexLock &m) : mutex(m)
+        {
+            pthread_cond_init(&pcond, NULL);
+        }
+        ~Condition()
+        {
+            pthread_cond_destroy(&pcond);
+        }
+
+        void wait()
+        {
+            pthread_cond_wait(&pcond, mutex.getPthreadMutex());
+        }
+
+        void notify()
+        {
+            pthread_cond_signal(&pcond);
+        }
+
+        void notifyAll()
+        {
+            pthread_cond_broadcast(&pcond);
+        }
+    };
 }
 
 /* 防止出现如此用法：
 MutexLockGuard(mutex);
 遗漏了变量名，造成生成临时对象，然后马上释放，没有锁住临界区
-*/ 
+*/
 #define MutexLockGuard(x) static_assert(fasle, "missing mutex guard name")
 #endif

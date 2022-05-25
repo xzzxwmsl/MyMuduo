@@ -23,3 +23,14 @@ int main()
     pthread_join(q, NULL);
     printf("OVER\n");
 }
+
+class Counter
+{
+private:
+    mymuduo::MutexLock mutex;
+    mymuduo::Condition cond;
+    int cnt;
+
+public:
+    Counter() : mutex(), cond(mutex), cnt(0) {}
+}
